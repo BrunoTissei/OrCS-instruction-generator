@@ -15,6 +15,7 @@ class AlgConfig:
         self.type = self.params['type']
 
 
+
 class Algorithm(metaclass = abc.ABCMeta):
     def __init__(self, config: AlgConfig):
         self.config = config

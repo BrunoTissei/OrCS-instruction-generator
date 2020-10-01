@@ -14,16 +14,15 @@ class Instruction:
 
 
     # Gets operands from instructions's string
-    def _parse_operands(self, name):
+    def _parse_operands(self, name: str) -> list:
         x = name.split(' (')[-1]
         if x[-1] == ')':
-            ans = x[:-1].split(', ')
-            return ans
+            return x[:-1].split(', ')
         return []
 
 
     # Parse ports from string form to dict
-    def _parse_ports(self, ports_str, all_ports):
+    def _parse_ports(self, ports_str: str, all_ports: list) -> dict:
         ports = dict(map(lambda x: (x, 0), all_ports))
 
         # Convert ports from uops.info notation to dict

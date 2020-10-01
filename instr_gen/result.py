@@ -1,4 +1,3 @@
-
 # Resulting instruction
 class ResInstruction:
     def __init__(self, icode: str):

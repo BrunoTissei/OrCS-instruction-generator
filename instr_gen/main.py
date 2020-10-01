@@ -1,8 +1,8 @@
 import argparse
 
 from instr_gen.config import Config
-from instr_gen.parser import Parser
-from instr_gen.generator import Generator
+from instr_gen.parser import parse
+from instr_gen.result import Result
 
 
 # Returns parser args
@@ -35,7 +35,26 @@ def parse_args() -> argparse.Namespace:
         help = 'icode_mapping.cfg'
     )
 
+    parser.add_argument('--name',
+        type = str,
+        action = 'store',
+        default = '',
+        required = True,
+        help = 'Prefix of resulting files'
+    )
+
     return parser.parse_args()
+
+
+# Gets result from all instruction groups
+def solve_all(instr_groups) -> Result:
+    result = Result()
+
+    for ig in instr_groups:
+        tmp = ig.solve()
+        result.merge(tmp)
+
+    return result
 
 
 #####################
@@ -46,15 +65,13 @@ def main() -> int:
     config = Config(args.config, args.icode)
 
     print('Parsing instructions xml')
-    parser = Parser(args.xml, config)
-    instr_groups = parser.parse()
+    instr_groups = parse(args.xml, config)
 
     print('Generating results')
-    generator = Generator()
-    result = generator.generate(instr_groups)
+    result = solve_all(instr_groups)
 
     print('Creating files')
-    result.output('full')
-    config.output_functional_units('full')
+    result.output(args.name)
+    config.output_functional_units(args.name)
 
     return 0

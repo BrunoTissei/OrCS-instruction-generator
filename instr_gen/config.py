@@ -96,7 +96,7 @@ class Config:
         self.instr_type[ext].add_instruction(instr)
 
     
-    # Checks whether extension is "covered" by config file
+    # Checks whether extension is specified by config file
     def check_extension(self, ext: str) -> bool:
         return ext in self.instr_type
 
