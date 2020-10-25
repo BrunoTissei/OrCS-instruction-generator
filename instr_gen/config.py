@@ -18,7 +18,7 @@ def create_algorithm(params: AlgConfig):
 
 
 
-class InstrGroup:
+class InstructionGroup:
     def __init__(self, config: libconf.AttrDict):
         self.name = config['name']
         self.exts = config['extensions']
@@ -69,15 +69,16 @@ class Config:
             for i in config['functional_units']
         ]
 
-        # Parse extension groups
+        # Parse and create extension groups
         self.instr_type = {}
         self.instr_groups = []
 
-        for cfg in config['instruction_types']:
-            instr_group = InstrGroup(cfg)
+        for cfg in config['instruction_groups']:
+            instr_group = InstructionGroup(cfg)
             self.instr_groups.append(instr_group)
 
             for ext in instr_group.exts:
+                assert(ext not in self.instr_type)
                 self.instr_type[ext] = instr_group
 
 

@@ -22,19 +22,28 @@ class GroupRepPort(Algorithm):
         self._setup_counts()
         self._setup_instructions(instructions)
 
-
         solver = self.Solver(self.instr_dict)
         ans = solver.solve(self.config.params['num_uops'])
 
         for uop in self.instr_dict.uops:
             self.result.uops.append(uop)
 
-        """
+        print()
+        print(f'{self.config.instruction_type}:')
+
         for i in ans.keys():
-            print(f'{i}:')
-            print(f'\tnew   -> {ans[i]}')
-            print(f'\torig  -> {solver.vec[i]}')
-        """
+            transf = lambda x: ' | '.join(list(map(lambda y: f'{y:2}', x)))
+
+            result   = transf(ans[i])
+            original = transf(solver.vec[i])
+            diff     = transf([ o - r for r, o in zip(ans[i], solver.vec[i]) ])
+
+            print(f'\t{i}:')
+            print(f'\t\tnew  -> {result}')
+            print(f'\t\torig -> {original}')
+            print(f'\t\tdiff -> {diff}')
+
+        print()
 
         return self.result
 
@@ -75,6 +84,8 @@ class GroupRepPort(Algorithm):
                     if j['name'] in instr.operands:
                         lat -= j['lat']
 
+        if self._get_rep_port(ports) == 'p0156':
+            print(instr.icode, ports)
         return max(lat, 1), self._get_rep_port(ports)
 
 
@@ -135,7 +146,11 @@ class GroupRepPort(Algorithm):
             for i, instr in enumerate(self.instr_per_lat[old_lat]):
                 instr.add_uop(uop_name)
 
-            return ResUop(uop_name, new_lat, config.uop_to_fu[val[0]][val[1] % N])
+            return ResUop(
+                uop_name,
+                new_lat,
+                config.uop_to_fu[val[0]][val[1] % N]
+            )
 
 
         @property
@@ -182,7 +197,12 @@ class GroupRepPort(Algorithm):
                     ii: int,
                     old_lat: int,
                     new_lat: int) -> None:
-            uop = self._set[self.ports[ii]].set_uop(old_lat, new_lat, self.config)
+            uop = self._set[self.ports[ii]].set_uop(
+                old_lat,
+                new_lat,
+                self.config
+            )
+
             self.uops.append(uop)
 
 

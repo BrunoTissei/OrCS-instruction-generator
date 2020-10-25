@@ -6,7 +6,7 @@ from collections import defaultdict
 from instr_gen.config import Config
 from instr_gen.instruction import Instruction
 
-
+# Xml measurement names that contains latency values
 CYCLES = [
     'cycles', 'cycles_addr', 'cycles_mem',
     'max_cycles', 'max_cycles_addr',
