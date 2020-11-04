@@ -67,7 +67,7 @@ class GroupRepPort(Algorithm):
         if ports[rep] > 0:
             return rep
 
-        return None
+        return 'empty'
 
 
     # Returns core latency and representative port
@@ -84,8 +84,6 @@ class GroupRepPort(Algorithm):
                     if j['name'] in instr.operands:
                         lat -= j['lat']
 
-        if self._get_rep_port(ports) == 'p0156':
-            print(instr.icode, ports)
         return max(lat, 1), self._get_rep_port(ports)
 
 
