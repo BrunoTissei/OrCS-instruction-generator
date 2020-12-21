@@ -70,7 +70,7 @@ def parse(xml_path: str, config: Config) -> defaultdict:
         if not ok:
             continue
 
-        if math.isnan(args['min_lat']):
+        if config.needs_latency(extension) and math.isnan(args['min_lat']):
             continue
 
         args['icode'] = config.icode_mapping[args['name']]
