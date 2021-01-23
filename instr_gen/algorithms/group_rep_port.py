@@ -309,13 +309,6 @@ class GroupRepPort(Algorithm):
             return abs(new - old)
 
 
-            #if l == 0:
-            #    return self.vec[pid][l] * self.acc_cnts[pid][r]
-
-            #bot = (self.acc_cnts[pid][r] - self.acc_cnts[pid][l - 1])
-            #return self.vec[pid][l] * bot
-
-
         # Weighted average of vec using cnt as weights
         def _weighted_avg(self, l: int, r: int, ii: int) -> int:
             pid = self.pid(ii)
