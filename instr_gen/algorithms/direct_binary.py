@@ -29,8 +29,6 @@ class DirectBinary(Algorithm):
             if len(uops) > 0:
                 for uop in uops:
                     res_instr.add_uop(uop_name(uop))
-            else:
-                res_instr.add_uop(uop_name('DEFAULT'))
 
             self.result.add_instruction(res_instr)
 

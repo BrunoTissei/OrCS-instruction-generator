@@ -8,7 +8,7 @@ from instr_gen.result import Result
 # Returns parser args
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description='Merge libconfig files.'
+        description = 'Generate instructions for OrCS'
     )
 
     parser.add_argument('--config',
