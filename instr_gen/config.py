@@ -1,4 +1,5 @@
 import io, libconf
+from collections import defaultdict
 
 from instr_gen.result import Result
 from instr_gen.instruction import Instruction
@@ -22,6 +23,7 @@ class InstructionGroup:
     def __init__(self, config: libconf.AttrDict):
         self.name = config['name']
         self.exts = config['extensions']
+        self.need_latency = config['need_latency']
 
         params = AlgConfig(config, self.name)
         self.algorithm = create_algorithm(params)
@@ -31,7 +33,7 @@ class InstructionGroup:
     def add_instruction(self, instr: Instruction) -> None:
         self.instructions.append(instr)
 
-    
+
     def solve(self) -> Result:
         self.instructions.sort(key = lambda x: x.icode)
         return self.algorithm.solve(self.instructions)
@@ -96,10 +98,14 @@ class Config:
         ext = instr.extension
         self.instr_type[ext].add_instruction(instr)
 
-    
+
     # Checks whether extension is specified by config file
     def check_extension(self, ext: str) -> bool:
         return ext in self.instr_type
+
+
+    def need_latency(self, ext: str) -> bool:
+        return self.instr_type[ext].need_latency
 
 
     def output_functional_units(self, name: str) -> None:

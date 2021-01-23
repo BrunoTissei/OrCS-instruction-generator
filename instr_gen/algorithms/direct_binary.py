@@ -25,8 +25,10 @@ class DirectBinary(Algorithm):
             uops = self._get_uops(instr.ports)
 
             res_instr = ResInstruction(instr.icode)
-            for uop in uops:
-                res_instr.add_uop(uop_name(uop))
+
+            if len(uops) > 0:
+                for uop in uops:
+                    res_instr.add_uop(uop_name(uop))
 
             self.result.add_instruction(res_instr)
 
