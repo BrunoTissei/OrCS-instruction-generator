@@ -9,13 +9,29 @@ class ResInstruction:
         self.uops.append(uop)
 
 
+    def __str__(self):
+        uops = list(map(lambda x: f'"{x}"', self.uops))
+        uops = ', '.join(uops)
+
+        return (f'NAME = "{self.icode}"; '
+                f'UOPS = [{uops}]')
+
+
 
 # Resulting uop
 class ResUop:
-    def __init__(self, name: str, lat: int, fu: str):
+    def __init__(self, name: str, lat: int, fu: str, ports: str):
         self.name = name
         self.latency = lat
         self.functional_unit = fu
+        self.ports = ports
+
+
+    def __str__(self):
+        return (f'NAME = "{self.name}"; '
+                f'LATENCY = {self.latency}; '
+                f'FU = "{self.functional_unit}"; '
+                f'PORTS = "{self.ports}";')
 
 
 
@@ -52,38 +68,22 @@ class Result:
             self.add_instruction(instr)
 
 
-    def output(self, name):
+    def output(self, name: str) -> None:
         self.uops.sort(key = lambda x: x.name)
         self.instructions.sort(key = lambda x: x.icode)
 
         # Output instructions
         with open(name + '_instructions.cfg', 'w+') as f:
+            lines = [ f'\t{{ {str(i)} }}' for i in self.instructions ]
+
             print('INSTRUCTIONS = (', file = f)
-
-            lines = []
-            for instr in self.instructions:
-                uops = list(map(lambda x: f'"{x}"', instr.uops))
-                uops = ', '.join(uops)
-
-                lines.append(f'\t{{ '
-                    f'NAME = "{instr.icode}"; '
-                    f'UOPS = [{uops}] '
-                f'}}')
-
             print(',\n'.join(lines), file = f)
             print(');', file = f)
 
         # Output uops
         with open(name + '_uops.cfg', 'w+') as f:
+            lines = [ f'\t{{ {str(i)} }}' for i in self.uops ]
+
             print('UOPS = (', file = f)
-
-            lines = []
-            for uop in self.uops:
-                lines.append(f'\t{{ '
-                    f'NAME = "{uop.name}"; '
-                    f'LATENCY = {uop.latency}; '
-                    f'FU = "{uop.functional_unit}"; '
-                f'}}')
-
             print(',\n'.join(lines), file = f)
             print(');', file = f)
