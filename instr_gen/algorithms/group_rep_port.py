@@ -45,12 +45,12 @@ class GroupRepPort(Algorithm):
         print(f'{self.config.instruction_type}:')
 
         for i in ans.keys():
-            transf = lambda x: ' | '.join(list(map(lambda y: f'{y:12}', x)))
+            transf = lambda x: ' | '.join(list(map(lambda y: f'{y:10}', x)))
 
             result   = transf(ans[i])
             original = transf(solver.vec[i])
             diff     = transf([ o - r for r, o in zip(ans[i], solver.vec[i]) ])
-            cnts     = transf(solver.cnt[i])
+            cnts     = transf(map(lambda x: int(x/100000), solver.cnt[i]))
 
             print(f'\t{i}:')
             print(f'\t\tcnt  -> {cnts}')
@@ -75,7 +75,7 @@ class GroupRepPort(Algorithm):
             bench_csv = pd.read_csv(path + '/' + filename)
 
             for i in bench_csv.iterrows():
-                self.cnt_per_icode[i[1]['icode']] += i[1]['count']
+                self.cnt_per_icode[i[1]['icode']] += float(i[1]['count'])
 
 
     # Returns representative port given port usage
@@ -271,8 +271,8 @@ class GroupRepPort(Algorithm):
             self.ans = dict([ (k, [0]*len(v)) for k, v in self.vec.items() ])
 
             # Used by dynamic programming
-            self.dp  = np.zeros((200, 200, 40),    dtype = int)
-            self.res = np.zeros((200, 200, 40, 2), dtype = int)
+            self.dp  = np.zeros((200, 200, 40),    dtype = object)
+            self.res = np.zeros((200, 200, 40, 2), dtype = object)
 
             self.dp.fill(-1)
 
@@ -284,7 +284,7 @@ class GroupRepPort(Algorithm):
 
             new, old = 0, 0
             for i in range(l, r + 1):
-                new += self.cnt[pid][i] * new_lat 
+                new += self.cnt[pid][i] * new_lat
                 old += self.cnt[pid][i] * self.vec[pid][i]
 
             return abs(new - old)
@@ -300,7 +300,7 @@ class GroupRepPort(Algorithm):
                 ss += self.vec[pid][i] * self.cnt[pid][i]
                 bot += self.cnt[pid][i]
 
-            return ss // bot
+            return round(ss / bot)
 
 
         # Returns result of optimization
@@ -318,7 +318,7 @@ class GroupRepPort(Algorithm):
 
         # Solves problem recursively
         def _solve(self, i: int, k: int, ii: int) -> int:
-            inf = 10**18
+            inf = 10**25
             if ii == self.N:
                 if k != 0:
                     return inf

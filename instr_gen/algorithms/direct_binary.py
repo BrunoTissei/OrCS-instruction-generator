@@ -1,3 +1,5 @@
+import itertools
+
 from instr_gen.result import Result
 from instr_gen.result import ResInstruction, ResUop
 
@@ -15,6 +17,8 @@ class DirectBinary(Algorithm):
         for i in self.config.params['port_fix']:
             ports[i['port']] = 0
 
+        # ans = [ [k] * v for k, v in ports.items() if v > 0 ]
+        # ans = list(itertools.chain.from_iterable(ans))
         ans = [ k for k, v in ports.items() if v > 0 ]
         return list(map(lambda x: self.config.port_to_uop[x], ans))
 
