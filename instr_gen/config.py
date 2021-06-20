@@ -18,7 +18,7 @@ def create_algorithm(params: AlgConfig):
     return algorithms[params.type](params)
 
 
-
+# List of instructions grouped by extensions (specificied by config file)
 class InstructionGroup:
     def __init__(self, config: libconf.AttrDict):
         self.name = config['name']
@@ -45,6 +45,12 @@ class FunctionalUnit:
         self.name      = config['name']
         self.size      = config['size']
         self.wait_next = config['wait_next']
+
+
+    def __str__(self):
+        return (f'NAME = "{self.name}"; '
+                f'SIZE = {self.size}; '
+                f'WAIT_NEXT = {self.wait_next};')
 
 
 
@@ -104,6 +110,7 @@ class Config:
         return ext in self.instr_type
 
 
+    # Some algorithms don't require latency for each instruction
     def need_latency(self, ext: str) -> bool:
         return self.instr_type[ext].need_latency
 
@@ -112,15 +119,8 @@ class Config:
         self.functional_units.sort(key = lambda x: x.name)
 
         with open(name + '_functional_units.cfg', 'w+') as f:
+            lines = [ f'\t{{ {str(i)} }}' for i in self.functional_units ]
+        
             print('FUNCTIONAL_UNITS = (', file = f)
-
-            lines = []
-            for fu in self.functional_units:
-                lines.append(f'\t{{ '
-                    f'NAME = "{fu.name}"; '
-                    f'SIZE = {fu.size}; '
-                    f'WAIT_NEXT = {fu.wait_next}; '
-                f'}}')
-
             print(',\n'.join(lines), file = f)
             print(');', file = f)

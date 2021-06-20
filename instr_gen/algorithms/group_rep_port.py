@@ -10,6 +10,7 @@ from instr_gen.result import Result, ResInstruction, ResUop
 from instr_gen.algorithms.algorithm import Algorithm, AlgConfig
 
 
+# Algorithm used for SIMD instructions
 class GroupRepPort(Algorithm):
     def __init__(self, config: AlgConfig):
         super().__init__(config)
@@ -22,6 +23,7 @@ class GroupRepPort(Algorithm):
         self._setup_counts()
         self._setup_instructions(instructions)
 
+        # The max number of uops is limited by number of distinct latency values
         num_uops = self.config.params['num_uops']
 
         max_num_uops = 0
@@ -32,6 +34,7 @@ class GroupRepPort(Algorithm):
             print(f'WARNING: num_uops set to {max_num_uops}')
             num_uops = max_num_uops
 
+        # Solve and get answer
         solver = self.Solver(self.instr_dict)
         ans = solver.solve(num_uops)
 
@@ -42,12 +45,12 @@ class GroupRepPort(Algorithm):
         print(f'{self.config.instruction_type}:')
 
         for i in ans.keys():
-            transf = lambda x: ' | '.join(list(map(lambda y: f'{y:12}', x)))
+            transf = lambda x: ' | '.join(list(map(lambda y: f'{y:10}', x)))
 
             result   = transf(ans[i])
             original = transf(solver.vec[i])
             diff     = transf([ o - r for r, o in zip(ans[i], solver.vec[i]) ])
-            cnts     = transf(solver.cnt[i])
+            cnts     = transf(map(lambda x: int(x/100000), solver.cnt[i]))
 
             print(f'\t{i}:')
             print(f'\t\tcnt  -> {cnts}')
@@ -60,6 +63,7 @@ class GroupRepPort(Algorithm):
         return self.result
 
 
+    # Parses benchmark files and retrieves count per instruction
     def _setup_counts(self) -> None:
         path = str(self.config.params['counts_path'])
 
@@ -71,9 +75,10 @@ class GroupRepPort(Algorithm):
             bench_csv = pd.read_csv(path + '/' + filename)
 
             for i in bench_csv.iterrows():
-                self.cnt_per_icode[i[1]['icode']] += i[1]['count']
+                self.cnt_per_icode[i[1]['icode']] += float(i[1]['count'])
 
 
+    # Returns representative port given port usage
     def _get_rep_port(self, ports: dict) -> str:
         rep = max(ports, key = ports.get)
         if ports[rep] > 0:
@@ -99,6 +104,7 @@ class GroupRepPort(Algorithm):
         return max(lat, 1), self._get_rep_port(ports)
 
 
+    # Adds all instructions to instr_dict
     def _setup_instructions(self, instructions: list) -> None:
         for instr in instructions:
             res_instr = ResInstruction(instr.icode)
@@ -113,7 +119,7 @@ class GroupRepPort(Algorithm):
 
 
 
-    # Set of instructions is divided by representative port (subsets)
+    # Set of instructions is enumerated by representative port (subsets)
     class InstrSet:
         def __init__(self, rep_port):
             self.uop_counter = 0
@@ -125,6 +131,7 @@ class GroupRepPort(Algorithm):
             self.new_uops = {}
 
 
+        # Called by InstrDict, adds instruction to dicts based on its latency
         def add_instruction(self,
                             instr: ResInstruction,
                             count: int,
@@ -158,12 +165,12 @@ class GroupRepPort(Algorithm):
             # Add uop to instructions with latency=old_lat in this set
             for i, instr in enumerate(self.instr_per_lat[old_lat]):
 
-                # Some uops may be related to more than one functional unit
+                # Some uops may be related to more than one functional unit (FU)
                 if len(fus) > 1:
                     target_fu = ''
 
                     # In this case, samples provided in config file are
-                    # analysed in order to figure out which fu is the
+                    # analysed in order to figure out which FU is the
                     # best fit for the current instruction
                     for fi, fu in enumerate(fus):
                         for samp in config.params['samples']:
@@ -182,12 +189,12 @@ class GroupRepPort(Algorithm):
                     instr.add_uop(uop_name)
 
 
-            # Return one uop for each fu, uops with more than one fu are append
-            # with fus name for disambiguation
+            # Return one uop for each FU, uops with more than one FU are appended
+            # with FUs name for disambiguation
             result = []
             for fi, fu in enumerate(fus):
                 name = uop_name + '_' + str(fi) if len(fus) > 1 else uop_name
-                result.append(ResUop(name, new_lat, fu))
+                result.append(ResUop(name, new_lat, fu, self.rep_port[1:]))
 
             return result
 
@@ -204,16 +211,19 @@ class GroupRepPort(Algorithm):
 
 
 
-    # Set of all instructions of a particular type
+    # Set of all instructions
     class InstrDict:
         def __init__(self, config: AlgConfig):
             self.config = config
 
+            # _set is a dict where the key is the representative port
+            # and the value is a list of instructions
             self._set = {}
             self.uops = []
             self.ports = []
 
 
+        # Called by algorithm, adds instructions to the corresponding set
         def add_instruction(self,
                             instr: ResInstruction,
                             count: int,
@@ -257,69 +267,40 @@ class GroupRepPort(Algorithm):
 
             self.N = len(instr_dict.ports)
 
-            self.ans = dict([
-                (k, [0] * len(v)) for k, v in self.vec.items()
-            ])
+            # After execution, will contain grouped latency values
+            self.ans = dict([ (k, [0]*len(v)) for k, v in self.vec.items() ])
 
-            self.mult = dict([
-                (k, self._dot_product(self.cnt[k], self.vec[k]))
-                for k in self.cnt.keys()
-            ])
-
-            self.acc_cnts = dict([
-                (k, self._prefix_sum(v))
-                for k, v in self.cnt.items()
-            ])
-
-            self.acc_mult = dict([
-                (k, self._prefix_sum(v))
-                for k, v in self.mult.items()
-            ])
-
-            self.dp = np.zeros((200, 200, 40), dtype = int)
-            self.res = np.zeros((200, 200, 40, 2), dtype = int)
+            # Used by dynamic programming
+            self.dp  = np.zeros((200, 200, 40),    dtype = object)
+            self.res = np.zeros((200, 200, 40, 2), dtype = object)
 
             self.dp.fill(-1)
-
-
-        def _prefix_sum(self, v: list) -> list:
-            return list(accumulate(v))
-
-
-        def _dot_product(self, v: list, u: list) -> list:
-            return [ i * j for i, j in zip(v, u) ]
 
 
         # Cost function
         def C(self, l: int, r: int, ii: int) -> int:
             pid = self.pid(ii)
-
-            ss = 0
-            bot = 0
-            for i in range(l, r + 1):
-                ss += self.vec[pid][i] * self.cnt[pid][i]
-                bot += self.cnt[pid][i]
+            new_lat = self._weighted_avg(l, r, ii)
 
             new, old = 0, 0
-            avg = ss // bot
             for i in range(l, r + 1):
-                new += self.cnt[pid][i] * avg
+                new += self.cnt[pid][i] * new_lat
                 old += self.cnt[pid][i] * self.vec[pid][i]
 
             return abs(new - old)
 
 
         # Weighted average of vec using cnt as weights
+        # (can be optimized with prefix sum vectors, only if necessary)
         def _weighted_avg(self, l: int, r: int, ii: int) -> int:
             pid = self.pid(ii)
-            if l == r:
-                return self.vec[pid][l]
 
-            if l == 0:
-                return self.acc_mult[pid][r] // self.acc_cnts[pid][r]
+            ss, bot = 0, 0
+            for i in range(l, r + 1):
+                ss += self.vec[pid][i] * self.cnt[pid][i]
+                bot += self.cnt[pid][i]
 
-            top = (self.acc_mult[pid][r] - self.acc_mult[pid][l - 1])
-            return top // (self.acc_cnts[pid][r] - self.acc_cnts[pid][l - 1])
+            return round(ss / bot)
 
 
         # Returns result of optimization
@@ -337,7 +318,7 @@ class GroupRepPort(Algorithm):
 
         # Solves problem recursively
         def _solve(self, i: int, k: int, ii: int) -> int:
-            inf = 10**18
+            inf = 10**25
             if ii == self.N:
                 if k != 0:
                     return inf
@@ -365,6 +346,7 @@ class GroupRepPort(Algorithm):
             return self.dp[i, k, ii]
 
 
+        # Builds result recursively by checking res table
         def _retrieve(self, i: int, k: int, ii: int) -> None:
             if ii == self.N:
                 return
@@ -375,7 +357,6 @@ class GroupRepPort(Algorithm):
             else:
                 lim = self.res[i, k, ii, 0]
 
-            # x = self.vec[pid][i]
             x = self._weighted_avg(i, lim - 1, ii)
 
             for j in range(i, lim):
